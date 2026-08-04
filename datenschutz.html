@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Datenschutz — Tank-Orakel</title>
+<style>
+:root{color-scheme:light dark}
+body{margin:0;font:17px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  background:#e7eeed;color:#0e2a33}
+@media (prefers-color-scheme:dark){body{background:#0e2a33;color:#eef2ef}}
+.wrap{max-width:640px;margin:0 auto;padding:32px 18px}
+a{color:inherit}
+.todo{border:1px dashed currentColor;border-radius:12px;padding:16px;opacity:.85}
+h1{font-size:1.4rem}
+h2{font-size:1.05rem;margin-top:24px}
+ul{padding-left:1.1em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p><a href="index.html">&larr; Zurück zum Tank-Orakel</a></p>
+  <h1>Datenschutz</h1>
+  <div class="todo">
+    <!-- TODO: Vollständige Datenschutzerklärung vom Betreiber ergänzen. -->
+    <p><strong>TODO — Platzhalter.</strong> Die vollständige Erklärung wird noch ergänzt.</p>
+    <p>Als Orientierung, was diese App tatsächlich verarbeitet — vom Betreiber zu prüfen und auszuformulieren:</p>
+    <ul>
+      <li>Der Standort (GPS oder eingegebene PLZ) wird nur für die aktuelle
+          Umkreisabfrage genutzt und <strong>nicht dauerhaft gespeichert</strong>;
+          die genauen Koordinaten bleiben ausschließlich im Arbeitsspeicher der Sitzung.</li>
+      <li>Zum Schutz der kostenlosen Tankerkönig-API werden Ergebnisse kurzzeitig
+          (max. 5&nbsp;Minuten) lokal im Browser zwischengespeichert, indexiert über
+          eine <em>gerundete</em>, grobe Ortsangabe.</li>
+      <li>Es findet <strong>kein Tracking, keine Analyse, keine Werbung</strong> statt;
+          es werden keine externen Schriften oder Skripte von Dritt-Servern geladen.</li>
+      <li>Bei der Abfrage von Live-Preisen wird die IP-Adresse technisch bedingt an
+          die Tankerkönig-API übertragen (Verantwortlicher der API separat zu nennen).</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

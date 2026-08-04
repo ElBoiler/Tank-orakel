@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Tank-Orakel: Jetzt tanken oder warten? Eine ehrliche Einschätzung auf Basis der 12-Uhr-Regel und der Tageskurve der Spritpreise.">
+<title>Tank-Orakel — Jetzt tanken oder warten?</title>
+
+<!-- =========================================================================
+     Tank-Orakel — single-file static web app.
+     No framework, no build, no server code. All HTML/CSS/JS lives here.
+     Data: Tankerkoenig-Spritpreis-API (CC BY 4.0) + a local historical curve.
+     Non-commercial private project. No ads, tracking, analytics or CDN fonts.
+     ========================================================================= -->
+
+<!-- Inline fallback curve so the page works even if curve.json cannot be
+     fetched. Overridden at runtime by fetch('curve.json'). PLACEHOLDER data. -->
+<script type="application/json" id="curve-fallback">
+{"schema_version":1,"fallback":true,"regimes":{"diesel":{"post_kpang":{"n_station_days":412000,"cheapest_minute":1245,"spread_ct":8.4,"overall":{"minute":[0,60,120,180,240,300,360,420,480,540,600,660,720,780,840,900,960,1020,1080,1140,1200,1260,1320,1380],"p50":[164.3,164.2,164.1,164.0,163.9,163.8,163.7,163.5,163.4,163.3,163.2,163.1,171.9,170.5,169.3,168.3,167.3,166.3,165.4,164.5,163.6,162.9,163.0,163.1],"p25":[163.0,162.9,162.8,162.7,162.6,162.5,162.3,162.2,162.1,162.0,161.9,161.8,170.2,168.7,167.6,166.5,165.5,164.6,163.6,162.7,161.8,161.2,161.3,161.4],"p75":[165.6,165.5,165.4,165.3,165.2,165.1,165.0,164.8,164.7,164.6,164.5,164.4,173.7,172.2,171.1,170.0,169.0,168.1,167.1,166.2,165.3,164.7,164.8,164.9]},"post_noon_decay":{"12":{"median_ct_vs_noon":0.0,"share_cheaper_than_noon":0.0},"13":{"median_ct_vs_noon":-0.9,"share_cheaper_than_noon":0.41},"14":{"median_ct_vs_noon":-1.8,"share_cheaper_than_noon":0.55},"15":{"median_ct_vs_noon":-2.7,"share_cheaper_than_noon":0.64},"16":{"median_ct_vs_noon":-3.5,"share_cheaper_than_noon":0.71},"17":{"median_ct_vs_noon":-4.2,"share_cheaper_than_noon":0.78},"18":{"median_ct_vs_noon":-4.8,"share_cheaper_than_noon":0.83},"19":{"median_ct_vs_noon":-5.3,"share_cheaper_than_noon":0.86},"20":{"median_ct_vs_noon":-5.6,"share_cheaper_than_noon":0.87},"21":{"median_ct_vs_noon":-5.4,"share_cheaper_than_noon":0.84}},"weekday_median_dev_ct":{"0":-0.2,"1":-0.1,"2":-0.15,"3":-0.1,"4":0.0,"5":0.25,"6":0.15}}},"e5":{"post_kpang":{"n_station_days":412000,"cheapest_minute":1245,"spread_ct":8.1,"overall":{"minute":[0,60,120,180,240,300,360,420,480,540,600,660,720,780,840,900,960,1020,1080,1140,1200,1260,1320,1380],"p50":[175.0,174.9,174.8,174.7,174.6,174.5,174.3,174.2,174.1,174.0,173.9,173.8,182.3,180.9,179.8,178.8,177.8,176.9,176.0,175.1,174.2,173.6,173.7,173.8],"p25":[173.7,173.6,173.5,173.4,173.3,173.2,173.0,172.9,172.8,172.7,172.6,172.5,180.5,179.2,178.1,177.0,176.1,175.1,174.2,173.4,172.5,171.9,172.0,172.1],"p75":[176.3,176.2,176.1,176.0,175.9,175.8,175.7,175.5,175.4,175.3,175.2,175.1,184.0,182.7,181.6,180.5,179.6,178.6,177.7,176.9,176.0,175.4,175.5,175.6]},"post_noon_decay":{"12":{"median_ct_vs_noon":0.0,"share_cheaper_than_noon":0.0},"13":{"median_ct_vs_noon":-0.9,"share_cheaper_than_noon":0.41},"14":{"median_ct_vs_noon":-1.8,"share_cheaper_than_noon":0.55},"15":{"median_ct_vs_noon":-2.7,"share_cheaper_than_noon":0.64},"16":{"median_ct_vs_noon":-3.5,"share_cheaper_than_noon":0.71},"17":{"median_ct_vs_noon":-4.2,"share_cheaper_than_noon":0.78},"18":{"median_ct_vs_noon":-4.8,"share_cheaper_than_noon":0.83},"19":{"median_ct_vs_noon":-5.3,"share_cheaper_than_noon":0.86},"20":{"median_ct_vs_noon":-5.6,"share_cheaper_than_noon":0.87},"21":{"median_ct_vs_noon":-5.4,"share_cheaper_than_noon":0.84}},"weekday_median_dev_ct":{"0":-0.2,"1":-0.1,"2":-0.15,"3":-0.1,"4":0.0,"5":0.25,"6":0.15}}},"e10":{"post_kpang":{"n_station_days":412000,"cheapest_minute":1245,"spread_ct":8.2,"overall":{"minute":[0,60,120,180,240,300,360,420,480,540,600,660,720,780,840,900,960,1020,1080,1140,1200,1260,1320,1380],"p50":[173.2,173.1,173.0,172.9,172.8,172.7,172.6,172.4,172.3,172.2,172.1,172.0,180.6,179.2,178.1,177.1,176.1,175.1,174.2,173.3,172.4,171.8,171.9,172.0],"p25":[171.9,171.8,171.7,171.6,171.5,171.4,171.2,171.1,171.0,170.9,170.8,170.7,178.8,177.5,176.3,175.3,174.3,173.4,172.5,171.6,170.7,170.1,170.2,170.3],"p75":[174.5,174.4,174.3,174.2,174.1,174.0,173.9,173.7,173.6,173.5,173.4,173.3,182.3,181.0,179.8,178.8,177.8,176.9,176.0,175.1,174.2,173.6,173.7,173.8]},"post_noon_decay":{"12":{"median_ct_vs_noon":0.0,"share_cheaper_than_noon":0.0},"13":{"median_ct_vs_noon":-0.9,"share_cheaper_than_noon":0.41},"14":{"median_ct_vs_noon":-1.8,"share_cheaper_than_noon":0.55},"15":{"median_ct_vs_noon":-2.7,"share_cheaper_than_noon":0.64},"16":{"median_ct_vs_noon":-3.5,"share_cheaper_than_noon":0.71},"17":{"median_ct_vs_noon":-4.2,"share_cheaper_than_noon":0.78},"18":{"median_ct_vs_noon":-4.8,"share_cheaper_than_noon":0.83},"19":{"median_ct_vs_noon":-5.3,"share_cheaper_than_noon":0.86},"20":{"median_ct_vs_noon":-5.6,"share_cheaper_than_noon":0.87},"21":{"median_ct_vs_noon":-5.4,"share_cheaper_than_noon":0.84}},"weekday_median_dev_ct":{"0":-0.2,"1":-0.1,"2":-0.15,"3":-0.1,"4":0.0,"5":0.25,"6":0.15}}}}}
+</script>
+
+<style>
+/* ---- Design tokens ------------------------------------------------------
+   "Dusk over the forecourt": deep petrol ground, one amber accent for the
+   12:00 step, cool teal for the waiting path. Never green/red traffic lights.
+   Light theme is the default so the verdict reads in car-park sunlight.      */
+:root{
+  --bg:#e7eeed; --surface:#ffffff; --surface-2:#f1f5f4;
+  --ink:#0e2a33; --muted:#4d666c; --line:#cfdcda;
+  --amber:#b26a06; --amber-soft:#e9c48a; --teal:#175d57; --slate:#5c7a80;
+  --band:#c9d8d6; --p50:#28545c; --now:#0e2a33; --today:#0e2a33;
+  --focus:#b26a06;
+  --shadow:0 1px 2px rgba(14,42,51,.06), 0 8px 24px rgba(14,42,51,.08);
+  --r:16px; --r-sm:10px;
+  --f-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0e2a33; --surface:#123640; --surface-2:#0f2f38;
+    --ink:#eef2ef; --muted:#9fb6bb; --line:#22454f;
+    --amber:#f0a22e; --amber-soft:#5a441f; --teal:#4fb3a9; --slate:#89a4aa;
+    --band:#1c414a; --p50:#7fb9b6; --now:#eef2ef; --today:#f0a22e;
+    --focus:#f0a22e;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--f-sans); line-height:1.5;
+  font-size:17px; letter-spacing:.005em;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+.wrap{max-width:640px; margin:0 auto; padding:20px 18px 40px}
+a{color:inherit; text-decoration-thickness:.08em; text-underline-offset:2px}
+:focus-visible{outline:3px solid var(--focus); outline-offset:2px; border-radius:6px}
+
+/* ---- Masthead ---------------------------------------------------------- */
+header.mast{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:6px}
+.mast h1{
+  font-size:1.15rem; font-weight:800; letter-spacing:-.01em; margin:0;
+}
+.mast .tag{color:var(--muted); font-size:.86rem}
+.lede{color:var(--muted); font-size:.92rem; margin:0 0 18px}
+
+/* ---- Verdict card (the hero) ------------------------------------------- */
+.verdict{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  box-shadow:var(--shadow); padding:22px 20px; margin-bottom:16px;
+  border-top:5px solid var(--slate);
+}
+.verdict[data-tone="wait"]{border-top-color:var(--amber)}
+.verdict[data-tone="buy"]{border-top-color:var(--teal)}
+.verdict[data-tone="neutral"]{border-top-color:var(--slate)}
+.verdict .word{
+  font-size:clamp(2.5rem,12vw,3.9rem); font-weight:800; line-height:1.0;
+  letter-spacing:-.02em; margin:2px 0 0; text-transform:uppercase;
+}
+.verdict[data-tone="wait"] .word{color:var(--amber)}
+.verdict[data-tone="buy"] .word{color:var(--teal)}
+.verdict[data-tone="neutral"] .word{color:var(--slate)}
+.verdict .sub{font-size:1.25rem; font-weight:700; margin-top:2px}
+.verdict .reason{font-size:1.02rem; margin:12px 0 0; max-width:46ch}
+.verdict .figure{
+  font-family:var(--f-mono); font-size:1.32rem; font-weight:600; margin-top:14px;
+  letter-spacing:-.01em;
+}
+.verdict .figure .eur{color:var(--muted); font-weight:500; font-size:1.02rem}
+.verdict .conf{margin-top:10px; font-size:.98rem; color:var(--ink)}
+.verdict .price-line{
+  margin-top:10px; font-family:var(--f-mono); font-size:.98rem; color:var(--muted);
+}
+.verdict .price-line b{color:var(--ink); font-weight:600}
+.card-foot{
+  display:flex; gap:8px 14px; flex-wrap:wrap; align-items:center;
+  margin-top:16px; padding-top:12px; border-top:1px solid var(--line);
+  font-size:.8rem; color:var(--muted);
+}
+.chip{
+  display:inline-flex; align-items:center; gap:6px; padding:3px 9px;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:999px;
+  font-size:.78rem; color:var(--muted);
+}
+.chip.warn{border-color:var(--amber-soft)}
+.disclaimer{font-style:italic}
+
+/* ---- Chart (signature element) ----------------------------------------- */
+.chart-card{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  box-shadow:var(--shadow); padding:16px 14px 12px; margin-bottom:16px;
+}
+.chart-card h2{font-size:.82rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin:0 0 8px}
+.chart-wrap{width:100%; overflow-x:auto}
+svg.path{width:100%; height:auto; display:block; touch-action:pan-y}
+.legend{display:flex; gap:14px; flex-wrap:wrap; margin-top:8px; font-size:.78rem; color:var(--muted)}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+.legend i{width:14px; height:0; border-top:3px solid currentColor; display:inline-block}
+.legend .sw-band{width:14px; height:10px; border-top:0; background:var(--band); border-radius:2px}
+.legend .c-p50{color:var(--p50)} .legend .c-now{color:var(--now)}
+.legend .c-target{color:var(--amber)} .legend .c-today{color:var(--today)}
+
+/* ---- Controls ---------------------------------------------------------- */
+.controls{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  box-shadow:var(--shadow); padding:16px 16px 18px; margin-bottom:16px;
+}
+.controls h2{font-size:.82rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin:0 0 12px}
+.field{margin-bottom:16px}
+.field:last-child{margin-bottom:0}
+.field > .label{display:block; font-size:.9rem; font-weight:600; margin-bottom:8px}
+.segmented{display:flex; gap:6px; flex-wrap:wrap}
+.segmented button{
+  flex:1 1 auto; min-width:64px; padding:11px 10px; font:inherit; font-weight:600;
+  background:var(--surface-2); color:var(--ink); border:1px solid var(--line);
+  border-radius:var(--r-sm); cursor:pointer;
+}
+.segmented button[aria-pressed="true"]{
+  background:var(--ink); color:var(--surface); border-color:var(--ink);
+}
+.row{display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end}
+.btn{
+  padding:12px 16px; font:inherit; font-weight:700; cursor:pointer;
+  background:var(--ink); color:var(--surface); border:1px solid var(--ink);
+  border-radius:var(--r-sm);
+}
+.btn.secondary{background:var(--surface); color:var(--ink)}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+input[type="text"]{
+  padding:12px 12px; font:inherit; width:100%; max-width:9.5em;
+  background:var(--surface); color:var(--ink);
+  border:1px solid var(--line); border-radius:var(--r-sm);
+}
+.hint{font-size:.82rem; color:var(--muted); margin:8px 0 0; max-width:52ch}
+.sep{display:flex; align-items:center; gap:10px; color:var(--muted); font-size:.82rem; margin:12px 0}
+.sep::before,.sep::after{content:""; height:1px; background:var(--line); flex:1}
+
+/* ---- Status / errors --------------------------------------------------- */
+.status{margin-bottom:16px; display:flex; flex-direction:column; gap:10px}
+.note{
+  padding:12px 14px; border-radius:var(--r-sm); font-size:.92rem;
+  border:1px solid var(--line); background:var(--surface);
+}
+.note.err{border-color:var(--amber); background:var(--amber-soft); color:var(--ink)}
+.note b{font-weight:700}
+.note .do{display:block; margin-top:4px; color:var(--muted)}
+
+/* ---- Stations list (supporting, quiet) --------------------------------- */
+.stations{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  box-shadow:var(--shadow); padding:14px 16px; margin-bottom:16px;
+}
+.stations h2{font-size:.82rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin:0 0 10px}
+.st-row{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:9px 0; border-top:1px solid var(--line);
+}
+.st-row:first-of-type{border-top:0}
+.st-name{font-weight:600; font-size:.96rem}
+.st-meta{color:var(--muted); font-size:.82rem}
+.st-price{font-family:var(--f-mono); font-weight:600; white-space:nowrap}
+.st-row.best .st-price{color:var(--teal)}
+.st-row.best .st-name::after{content:"günstigste"; margin-left:8px; font-size:.7rem; font-weight:700; color:var(--teal); text-transform:uppercase; letter-spacing:.04em}
+
+/* ---- Footer / legal ---------------------------------------------------- */
+footer{margin-top:24px; padding-top:16px; border-top:1px solid var(--line); color:var(--muted); font-size:.82rem}
+footer p{margin:0 0 8px}
+footer .links{display:flex; gap:16px; flex-wrap:wrap}
+
+@media (prefers-reduced-motion:no-preference){
+  .verdict,.chart-card{transition:border-color .2s ease}
+  svg.path .reveal{stroke-dasharray:1; animation:draw .6s ease forwards}
+}
+@keyframes draw{from{stroke-dashoffset:1}to{stroke-dashoffset:0}}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <h1>Tank-Orakel</h1>
+    <span class="tag">12-Uhr-Regel · Tageskurve</span>
+  </header>
+  <p class="lede">Eine Frage, eine Antwort: jetzt tanken oder kurz warten. Seit dem 1.&nbsp;April&nbsp;2026 darf ein Preis nur einmal am Tag steigen — um 12&nbsp;Uhr. Das macht den Tagesverlauf teils vorhersehbar.</p>
+
+  <!-- Verdict (hero) -->
+  <section class="verdict" id="verdict" data-tone="neutral" aria-live="polite" aria-atomic="true">
+    <div class="word" id="v-word">Moment…</div>
+    <div class="sub" id="v-sub" hidden></div>
+    <p class="reason" id="v-reason">Die Empfehlung wird berechnet.</p>
+    <div class="figure" id="v-figure" hidden></div>
+    <div class="conf" id="v-conf" hidden></div>
+    <div class="price-line" id="v-price" hidden></div>
+    <div class="card-foot" id="v-foot"></div>
+  </section>
+
+  <!-- Signature chart -->
+  <section class="chart-card">
+    <h2>Preisverlauf über den Tag</h2>
+    <div class="chart-wrap" id="chart" role="img" aria-label="Preisverlauf wird geladen."></div>
+    <div class="legend" aria-hidden="true">
+      <span class="c-p50"><i></i>typischer Preis</span>
+      <span><span class="sw-band"></span>üblicher Bereich</span>
+      <span class="c-now"><i></i>jetzt</span>
+      <span class="c-target"><i></i>empfohlen</span>
+      <span class="c-today" id="lg-today" hidden><i></i>heute günstigste</span>
+    </div>
+  </section>
+
+  <!-- Status / errors -->
+  <div class="status" id="status"></div>
+
+  <!-- Controls -->
+  <section class="controls" aria-label="Einstellungen">
+    <h2>Einstellungen</h2>
+
+    <div class="field">
+      <span class="label" id="fuel-label">Kraftstoff</span>
+      <div class="segmented" role="group" aria-labelledby="fuel-label" id="fuel-group">
+        <button type="button" data-fuel="diesel" aria-pressed="true">Diesel</button>
+        <button type="button" data-fuel="e5" aria-pressed="false">Super E5</button>
+        <button type="button" data-fuel="e10" aria-pressed="false">Super E10</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label" id="rad-label">Umkreis</span>
+      <div class="segmented" role="group" aria-labelledby="rad-label" id="rad-group">
+        <button type="button" data-rad="2" aria-pressed="false">2&nbsp;km</button>
+        <button type="button" data-rad="5" aria-pressed="true">5&nbsp;km</button>
+        <button type="button" data-rad="10" aria-pressed="false">10&nbsp;km</button>
+        <button type="button" data-rad="25" aria-pressed="false">25&nbsp;km</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label">Standort für Live-Preise</span>
+      <div class="row">
+        <button type="button" class="btn" id="geo-btn">Standort verwenden</button>
+      </div>
+      <p class="hint">Dein Standort wird nur für diese Abfrage genutzt und nicht dauerhaft gespeichert. Die Freigabe fragen wir erst, wenn du hier tippst.</p>
+      <div class="sep">oder</div>
+      <div class="row">
+        <div>
+          <label class="label" for="plz" style="font-weight:600;font-size:.9rem;display:block;margin-bottom:8px">Postleitzahl</label>
+          <input type="text" id="plz" inputmode="numeric" autocomplete="postal-code" maxlength="5" placeholder="z. B. 50667" aria-describedby="plz-hint">
+        </div>
+        <button type="button" class="btn secondary" id="plz-btn">Preise suchen</button>
+      </div>
+      <p class="hint" id="plz-hint">Gleichwertige Alternative ohne Standortfreigabe. Der Ort wird nur grob (Region der PLZ) bestimmt, für die Zeit-Empfehlung reicht das.</p>
+      <div class="row" style="margin-top:14px">
+        <button type="button" class="btn secondary" id="refresh-btn" disabled>Preise aktualisieren</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stations -->
+  <section class="stations" id="stations" hidden>
+    <h2>Günstigste in der Nähe</h2>
+    <div id="st-list"></div>
+  </section>
+
+  <footer>
+    <p id="src-note">Preisdaten: <strong>Tankerkönig-Spritpreis-API</strong>, lizenziert unter <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="noopener">CC&nbsp;BY&nbsp;4.0</a>. Verlaufsdaten sind zurzeit Beispiel-/Demo-Werte.</p>
+    <p>Nicht-kommerzielles, privates Projekt. Keine Werbung, kein Tracking, keine Analyse, keine externen Schriften. Statistische Tendenz, keine Vorhersage.</p>
+    <p class="links">
+      <a href="impressum.html">Impressum</a>
+      <a href="datenschutz.html">Datenschutz</a>
+      <a href="https://creativecommons.tankerkoenig.de/" rel="noopener">Tankerkönig</a>
+    </p>
+  </footer>
+</div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   Tank-Orakel logic
+   ========================================================================== */
+
+// API key: leave as the placeholder; it gets filled in before deployment.
+const API_KEY = "REPLACE_ME";
+const API_BASE = "https://creativecommons.tankerkoenig.de/json/";
+
+const FUELS = { diesel:"Diesel", e5:"Super E5", e10:"Super E10" };
+const NOON = 720;                 // minutes since midnight
+const SAVE_THRESHOLD_CT = 1.5;    // minimum remaining drop to advise waiting
+const CONF_THRESHOLD = 0.60;      // minimum share_cheaper_than_noon
+const MIN_STATION_DAYS = 200;     // data-quality gate
+const TTL_MS = 5 * 60 * 1000;     // list.php cache lifetime
+const MIN_REQUEST_GAP_MS = 60 * 1000; // never hit the API more than 1×/60 s
+
+// Rough PLZ2 (first two digits) -> approximate centre. Offline, so postcode
+// entry needs no third-party geocoder (DSGVO). City-region accuracy only.
+const PLZ2 = {
+ "01":[51.05,13.74],"02":[51.16,14.99],"03":[51.76,14.33],"04":[51.34,12.37],
+ "06":[51.48,11.97],"07":[50.88,11.59],"08":[50.72,12.49],"09":[50.83,12.92],
+ "10":[52.52,13.40],"11":[52.52,13.40],"12":[52.45,13.42],"13":[52.56,13.35],
+ "14":[52.40,13.06],"15":[52.34,14.55],"16":[52.83,13.82],"17":[53.56,13.26],
+ "18":[54.09,12.14],"19":[53.63,11.41],"20":[53.55,10.00],"21":[53.25,10.41],
+ "22":[53.60,9.95],"23":[53.87,10.69],"24":[54.32,10.14],"25":[54.19,9.08],
+ "26":[53.14,8.21],"27":[53.55,8.58],"28":[53.08,8.81],"29":[52.62,10.08],
+ "30":[52.37,9.73],"31":[52.15,9.95],"32":[52.19,8.67],"33":[51.72,8.75],
+ "34":[51.31,9.49],"35":[50.58,8.68],"36":[50.55,9.68],"37":[51.53,9.93],
+ "38":[52.27,10.52],"39":[52.13,11.63],"40":[51.23,6.78],"41":[51.19,6.44],
+ "42":[51.26,7.15],"44":[51.51,7.47],"45":[51.46,7.01],"46":[51.50,6.85],
+ "47":[51.43,6.76],"48":[51.96,7.63],"49":[52.28,8.05],"50":[50.94,6.96],
+ "51":[51.03,7.02],"52":[50.78,6.08],"53":[50.73,7.10],"54":[49.75,6.64],
+ "55":[50.00,8.27],"56":[50.36,7.59],"57":[50.88,8.02],"58":[51.36,7.47],
+ "59":[51.68,7.82],"60":[50.11,8.68],"61":[50.23,8.62],"63":[50.10,8.77],
+ "64":[49.87,8.65],"65":[50.08,8.24],"66":[49.24,6.99],"67":[49.44,7.77],
+ "68":[49.49,8.47],"69":[49.40,8.69],"70":[48.78,9.18],"71":[48.90,9.19],
+ "72":[48.52,9.06],"73":[48.70,9.65],"74":[49.14,9.22],"75":[48.89,8.70],
+ "76":[49.01,8.40],"77":[48.47,7.94],"78":[47.99,8.46],"79":[47.99,7.84],
+ "80":[48.14,11.58],"81":[48.11,11.60],"82":[48.00,11.35],"83":[47.86,12.12],
+ "84":[48.54,12.15],"85":[48.77,11.42],"86":[48.37,10.90],"87":[47.73,10.31],
+ "88":[47.78,9.61],"89":[48.40,9.99],"90":[49.45,11.08],"91":[49.60,11.00],
+ "92":[49.45,12.16],"93":[49.01,12.10],"94":[48.57,13.46],"95":[49.95,11.58],
+ "96":[49.89,10.89],"97":[49.79,9.95],"98":[50.61,10.69],"99":[50.98,11.03]
+};
+
+// ---- App state (coordinates live only here, in memory) --------------------
+const state = {
+  fuel:"diesel", radius:5,
+  coords:null,        // {lat,lng,approx,label}
+  plz:null,           // string, for by_plz1 bucket selection
+  curve:null, curveSource:"fallback",
+  stations:null, liveCt:null,
+  loading:false
+};
+
+// ---- Small helpers --------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+function median(arr){
+  const a = arr.filter(x=>typeof x==="number").slice().sort((x,y)=>x-y);
+  if(!a.length) return null;
+  const m = Math.floor(a.length/2);
+  return a.length%2 ? a[m] : (a[m-1]+a[m])/2;
+}
+function fmtEuroPerL(ct){ // ct/l number -> "1,639 €"
+  return (ct/100).toLocaleString("de-DE",{minimumFractionDigits:3,maximumFractionDigits:3})+" €";
+}
+function fmtCt(ct){ return ct.toLocaleString("de-DE",{minimumFractionDigits:1,maximumFractionDigits:1})+" ct"; }
+function fmtEuro(e){ return e.toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2})+" €"; }
+function pad2(n){ return String(n).padStart(2,"0"); }
+
+// ---- Time (Europe/Berlin), with optional #t=HH:MM dev override ------------
+function berlinNow(){
+  const hash = location.hash.match(/t=(\d{1,2}):(\d{2})/);
+  let min, weekday;
+  const now = new Date();
+  // Wall-clock in Berlin via locale conversion.
+  const berlin = new Date(now.toLocaleString("en-US",{timeZone:"Europe/Berlin"}));
+  weekday = berlin.getDay(); // 0 = Sunday
+  if(hash){
+    min = Math.min(1439, parseInt(hash[1],10)*60 + parseInt(hash[2],10));
+  } else {
+    min = berlin.getHours()*60 + berlin.getMinutes();
+  }
+  return { min, weekday, override: !!hash };
+}
+
+// ---- Curve loading & bucket selection -------------------------------------
+function parseInlineCurve(){
+  try{ return JSON.parse($("curve-fallback").textContent); }
+  catch(e){ return null; }
+}
+function validCurve(c){
+  return !!(c && c.regimes && c.regimes.diesel && c.regimes.diesel.post_kpang
+            && c.regimes.diesel.post_kpang.overall
+            && Array.isArray(c.regimes.diesel.post_kpang.overall.p50)
+            && c.regimes.diesel.post_kpang.overall.p50.length > 1);
+}
+async function loadCurve(){
+  state.curve = parseInlineCurve();
+  state.curveSource = state.curve ? "fallback" : null;
+  try{
+    const res = await fetch("curve.json", {cache:"no-store"});
+    if(res.ok){
+      const j = await res.json();
+      if(validCurve(j)){ state.curve = j; state.curveSource = "curve.json"; }
+    }
+  }catch(e){ /* keep inline fallback silently */ }
+}
+// Choose by_plz1 bucket when it exists and is well-sampled, else overall.
+function pickBucket(){
+  const c = state.curve;
+  const reg = c && c.regimes && c.regimes[state.fuel] && c.regimes[state.fuel].post_kpang;
+  if(!reg) return null;
+  let shape = reg.overall, decay = reg.post_noon_decay || {}, n = reg.n_station_days, scope = "bundesweit", plz1 = null;
+  const d1 = state.plz ? String(state.plz)[0] : null;
+  if(d1!=null && reg.by_plz1 && reg.by_plz1[d1]){
+    const b = reg.by_plz1[d1];
+    if(b && b.overall && b.n_station_days >= MIN_STATION_DAYS){
+      shape = b.overall; decay = b.post_noon_decay || decay; n = b.n_station_days;
+      scope = "Region " + d1; plz1 = d1;
+    }
+  }
+  const usable = !!(shape && Array.isArray(shape.p50) && shape.p50.length > 1 && n >= MIN_STATION_DAYS);
+  return { shape, decay, n, scope, plz1, usable, cheapestMinute: reg.cheapest_minute, spread: reg.spread_ct };
+}
+
+// ---- Decision engine ------------------------------------------------------
+// liveCt is optional; when present we anchor the historical decay to today's
+// live cheapest price and compare projected future price against it.
+function decide(nowMin, liveCt, bucket){
+  if(!bucket || !bucket.usable) return { kind:"degraded" };
+
+  if(nowMin < NOON){
+    const morning = bucket.shape.p50.filter((_,i)=> bucket.shape.minute[i] < NOON);
+    const plateau = median(morning);
+    const minsToNoon = NOON - nowMin;
+    if(liveCt!=null && plateau!=null && liveCt > plateau + 1.0){
+      return { kind:"morningHigh", plateau, liveCt, minsToNoon };
+    }
+    return { kind:"morningBuy", plateau, minsToNoon };
+  }
+
+  // Afternoon: read decay vs noon, project remaining drop from *now*.
+  const nowHour = Math.floor(nowMin/60);
+  const decay = bucket.decay || {};
+  const nowRec = decay[String(nowHour)];
+  const nowDev = nowRec ? nowRec.median_ct_vs_noon : 0;
+  const cands = [];
+  for(let h = nowHour+1; h <= 23; h++){
+    const d = decay[String(h)];
+    if(!d) continue;
+    // remaining drop still expected from now until hour h (>0 means cheaper later)
+    const saving = nowDev - d.median_ct_vs_noon;
+    cands.push({ h, saving, share: d.share_cheaper_than_noon });
+  }
+  const viable = cands.filter(c => c.saving >= SAVE_THRESHOLD_CT && c.share >= CONF_THRESHOLD);
+  if(!viable.length) return { kind:"buyNow", liveCt };
+
+  const bestMax = Math.max(...viable.map(c => c.saving));
+  // Earliest hour that captures within 0.4 ct of the deepest expected price.
+  const target = viable.find(c => c.saving >= bestMax - 0.4) || viable[viable.length-1];
+  return {
+    kind:"wait",
+    targetHour: target.h,
+    savingCt: target.saving,
+    eur50: target.saving * 0.01 * 50,
+    share: target.share,
+    liveCt,
+    projectedCt: liveCt!=null ? liveCt - target.saving : null
+  };
+}
+
+// ---- Networking: list.php with cache + hard throttle ----------------------
+function roundCoord(x){ return Math.round(x*1000)/1000; } // ~110 m buckets
+function cacheKey(){
+  return `tk:${state.fuel}:${state.radius}:${roundCoord(state.coords.lat)}:${roundCoord(state.coords.lng)}`;
+}
+function readCache(key){
+  try{ const v = JSON.parse(localStorage.getItem(key)); return v && typeof v.t==="number" ? v : null; }
+  catch(e){ return null; }
+}
+function purgeOldCache(){
+  try{
+    for(let i=localStorage.length-1;i>=0;i--){
+      const k = localStorage.key(i);
+      if(k && k.startsWith("tk:") && k!=="tk:lastReq"){
+        const v = readCache(k);
+        if(!v || Date.now()-v.t > TTL_MS) localStorage.removeItem(k);
+      }
+    }
+  }catch(e){}
+}
+async function fetchStations(){
+  if(API_KEY === "REPLACE_ME"){ const e = new Error("nokey"); e.code="nokey"; throw e; }
+  const url = `${API_BASE}list.php?lat=${state.coords.lat}&lng=${state.coords.lng}`
+            + `&rad=${state.radius}&sort=dist&type=${state.fuel}&apikey=${encodeURIComponent(API_KEY)}`;
+  let res;
+  try{ res = await fetch(url); }
+  catch(netErr){ const e = new Error("network"); e.code="network"; throw e; }
+  if(!res.ok){ const e = new Error("http"); e.code="http"; e.status=res.status; throw e; }
+  let j;
+  try{ j = await res.json(); }
+  catch(pErr){ const e = new Error("parse"); e.code="parse"; throw e; }
+  if(!j || j.ok === false || j.status === "error"){
+    const e = new Error("api"); e.code="api"; e.message = (j && j.message) || "unbekannt"; throw e;
+  }
+  return (j.stations||[]).filter(s => s.isOpen && typeof s[state.fuel]==="number" && s[state.fuel] > 0);
+}
+// Returns {stations, cached}. Throws {code:"throttle",wait} when a fresh call
+// is due but the 60 s minimum gap has not elapsed and no cache is available.
+async function getStations(){
+  purgeOldCache();
+  const key = cacheKey();
+  const cache = readCache(key);
+  if(cache && Date.now()-cache.t < TTL_MS) return { stations:cache.data, cached:true };
+
+  const last = parseInt(localStorage.getItem("tk:lastReq")||"0",10);
+  const gap = Date.now() - last;
+  if(gap < MIN_REQUEST_GAP_MS){
+    if(cache) return { stations:cache.data, cached:true, stale:true };
+    const e = new Error("throttle"); e.code="throttle"; e.wait = Math.ceil((MIN_REQUEST_GAP_MS-gap)/1000); throw e;
+  }
+  localStorage.setItem("tk:lastReq", String(Date.now()));
+  const stations = await fetchStations();
+  try{ localStorage.setItem(key, JSON.stringify({ t:Date.now(), data:stations })); }catch(e){}
+  return { stations, cached:false };
+}
+
+// ---- Rendering: verdict card ---------------------------------------------
+function renderVerdict(nowMin, bucket, v){
+  const el = $("verdict");
+  const word = $("v-word"), sub = $("v-sub"), reason = $("v-reason");
+  const figure = $("v-figure"), conf = $("v-conf"), price = $("v-price"), foot = $("v-foot");
+  sub.hidden = figure.hidden = conf.hidden = price.hidden = true;
+  foot.innerHTML = "";
+
+  const hh = (h) => pad2(h) + ":00";
+  let tone = "neutral";
+
+  if(v.kind === "wait"){
+    tone = "wait";
+    word.textContent = "Warten";
+    sub.hidden = false; sub.textContent = "bis ~" + hh(v.targetHour) + " Uhr";
+    reason.textContent = "Der Preis fällt um diese Zeit erfahrungsgemäß noch weiter. Steigen darf er heute nicht mehr.";
+    figure.hidden = false;
+    figure.innerHTML = "≈ " + fmtCt(v.savingCt) + "/l günstiger "
+      + '<span class="eur">· rund ' + fmtEuro(v.eur50) + " pro 50-l-Tankfüllung</span>";
+    conf.hidden = false;
+    conf.textContent = "An " + Math.round(v.share*10) + " von 10 Tagen war es gegen " + hh(v.targetHour)
+      + " günstiger als zu Mittag.";
+    if(v.projectedCt!=null){
+      price.hidden = false;
+      price.innerHTML = "Jetzt günstigste: <b>" + fmtEuroPerL(v.liveCt) + "</b> → erwartet gegen "
+        + pad2(v.targetHour) + " Uhr: <b>" + fmtEuroPerL(v.projectedCt) + "</b>";
+    }
+  } else if(v.kind === "morningBuy"){
+    tone = "buy";
+    word.textContent = "Jetzt tanken";
+    reason.textContent = "Vor 12 Uhr darf der Preis nicht steigen — um 12 Uhr steigt er meistens. Später wird es zunächst teurer.";
+    figure.hidden = false;
+    figure.innerHTML = "Noch " + v.minsToNoon + " Min bis 12:00";
+  } else if(v.kind === "morningHigh"){
+    tone = "neutral";
+    word.textContent = "Eher jetzt";
+    reason.textContent = "Der günstigste Preis liegt schon über dem üblichen Vormittagsniveau ("
+      + fmtEuroPerL(v.plateau) + "). Ein weiterer Rückgang vor 12 Uhr ist möglich, aber nicht typisch.";
+  } else if(v.kind === "buyNow"){
+    tone = "buy";
+    word.textContent = "Jetzt tanken";
+    reason.textContent = "Ein nennenswerter weiterer Rückgang ist ab jetzt nicht mehr typisch.";
+  } else { // degraded
+    tone = "neutral";
+    word.textContent = "Preisvergleich";
+    reason.textContent = "Prognose nicht verfügbar — es fehlen ausreichende historische Daten für diese Auswahl. "
+      + "Wir zeigen nur den aktuellen Preisvergleich unten.";
+  }
+  el.setAttribute("data-tone", tone);
+
+  // Footer chips: always show data basis so confidence is visible at a glance.
+  const chips = [];
+  chips.push('<span class="chip">Diesel/E5/E10: '+FUELS[state.fuel]+"</span>");
+  if(bucket && bucket.usable){
+    chips.push('<span class="chip">Datenbasis: '+bucket.scope+" · "
+      + bucket.n.toLocaleString("de-DE")+" Stationstage</span>");
+  }
+  chips.push('<span class="chip warn">Verlauf: Demo-Daten</span>');
+  chips.push('<span class="disclaimer">Statistische Tendenz, keine Vorhersage.</span>');
+  foot.innerHTML = chips.join("");
+}
+
+// ---- Rendering: SVG price-path chart (signature) --------------------------
+function renderChart(nowMin, bucket, v){
+  const host = $("chart");
+  if(!bucket || !bucket.usable){
+    host.innerHTML = '<p class="hint" style="margin:8px 4px">Kein Tagesverlauf verfügbar.</p>';
+    host.setAttribute("aria-label","Kein Tagesverlauf verfügbar.");
+    return;
+  }
+  const s = bucket.shape, mins = s.minute, p50 = s.p50, p25 = s.p25, p75 = s.p75;
+  const W=720, H=300, padL=44, padR=14, padT=16, padB=30, iw=W-padL-padR, ih=H-padT-padB;
+  let lo=Math.min(...p25), hi=Math.max(...p75);
+  if(state.liveCt!=null){ lo=Math.min(lo,state.liveCt); hi=Math.max(hi,state.liveCt); }
+  lo-=0.6; hi+=0.6;
+  const X = (m)=> padL + (m/1440)*iw;
+  const Y = (val)=> padT + (hi-val)/(hi-lo)*ih;
+  const interp = (m)=>{
+    if(m<=mins[0]) return p50[0];
+    if(m>=mins[mins.length-1]) return p50[p50.length-1];
+    for(let i=1;i<mins.length;i++){ if(m<=mins[i]){ const t=(m-mins[i-1])/(mins[i]-mins[i-1]); return p50[i-1]+(p50[i]-p50[i-1])*t; } }
+    return p50[p50.length-1];
+  };
+  const esc = (n)=> n.toFixed(1);
+
+  // Confidence band (p25..p75) as a filled path.
+  let band = "M";
+  mins.forEach((m,i)=>{ band += " " + esc(X(m)) + "," + esc(Y(p75[i])); });
+  for(let i=mins.length-1;i>=0;i--){ band += " " + esc(X(mins[i])) + "," + esc(Y(p25[i])); }
+  band += " Z";
+  const p50pts = mins.map((m,i)=> esc(X(m))+","+esc(Y(p50[i]))).join(" ");
+
+  // Axis ticks
+  const xticks = [0,360,720,1080,1440].map(m=>{
+    const lab = m===1440 ? "24" : String(m/60);
+    return `<line x1="${esc(X(m))}" y1="${padT}" x2="${esc(X(m))}" y2="${H-padB}" stroke="var(--line)" stroke-width="1"/>`
+         + `<text x="${esc(X(m))}" y="${H-padB+16}" fill="var(--muted)" font-size="12" text-anchor="middle">${lab}</text>`;
+  }).join("");
+  const yvals = [hi-0.6, (hi+lo)/2, lo+0.6];
+  const yticks = yvals.map(val=>
+    `<text x="${padL-8}" y="${esc(Y(val)+4)}" fill="var(--muted)" font-size="12" text-anchor="end">${Math.round(val)}</text>`
+  ).join("");
+
+  // 12:00 guide
+  const noonGuide = `<line x1="${esc(X(NOON))}" y1="${padT}" x2="${esc(X(NOON))}" y2="${H-padB}" stroke="var(--amber)" stroke-width="1" stroke-dasharray="2 4" opacity=".55"/>`
+    + `<text x="${esc(X(NOON)+4)}" y="${padT+12}" fill="var(--amber)" font-size="11">12:00</text>`;
+
+  // Now marker
+  const nowX = X(nowMin), nowP50 = interp(nowMin);
+  const nowMark =
+    `<line x1="${esc(nowX)}" y1="${padT}" x2="${esc(nowX)}" y2="${H-padB}" stroke="var(--now)" stroke-width="1.5"/>`
+    + `<circle cx="${esc(nowX)}" cy="${esc(Y(nowP50))}" r="4" fill="var(--now)"/>`
+    + `<text x="${esc(Math.min(nowX+6, W-40))}" y="${padT+12}" fill="var(--now)" font-size="11" font-weight="700">jetzt ${pad2(Math.floor(nowMin/60))}:${pad2(nowMin%60)}</text>`;
+
+  // Today's live cheapest dot
+  let todayMark = "";
+  if(state.liveCt!=null){
+    todayMark = `<circle cx="${esc(nowX)}" cy="${esc(Y(state.liveCt))}" r="5" fill="var(--today)" stroke="var(--surface)" stroke-width="1.5"/>`;
+  }
+
+  // Recommended-time marker
+  let targetMark = "";
+  if(v.kind === "wait"){
+    const tx = X(v.targetHour*60);
+    targetMark =
+      `<line x1="${esc(tx)}" y1="${padT}" x2="${esc(tx)}" y2="${H-padB}" stroke="var(--amber)" stroke-width="2"/>`
+      + `<circle cx="${esc(tx)}" cy="${esc(Y(interp(v.targetHour*60)))}" r="4" fill="var(--amber)"/>`
+      + `<text x="${esc(Math.min(tx+6, W-70))}" y="${H-padB-6}" fill="var(--amber)" font-size="11" font-weight="700">warten bis ${pad2(v.targetHour)}:00</text>`;
+  }
+
+  const label = "Preisverlauf über den Tag: flacher Vormittag, Sprung um 12 Uhr, Rückgang zum Abend. "
+    + "Jetzt " + pad2(Math.floor(nowMin/60)) + ":" + pad2(nowMin%60) + "."
+    + (v.kind==="wait" ? " Empfohlen: warten bis etwa "+pad2(v.targetHour)+" Uhr." : " Empfehlung: jetzt tanken.");
+
+  host.innerHTML =
+    `<svg class="path" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${label}">`
+    + `<rect x="${padL}" y="${padT}" width="${iw}" height="${ih}" fill="none"/>`
+    + xticks + yticks
+    + `<path d="${band}" fill="var(--band)" opacity=".7"/>`
+    + noonGuide
+    + `<polyline class="reveal" points="${p50pts}" fill="none" stroke="var(--p50)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`
+    + targetMark + nowMark + todayMark
+    + `</svg>`;
+  host.setAttribute("aria-label", label);
+  $("lg-today").hidden = state.liveCt==null;
+}
+
+// ---- Rendering: stations list --------------------------------------------
+function renderStations(){
+  const sec = $("stations"), list = $("st-list");
+  if(!state.stations || !state.stations.length){ sec.hidden = true; return; }
+  const rows = state.stations.slice()
+    .sort((a,b)=> a[state.fuel]-b[state.fuel]).slice(0,5);
+  list.innerHTML = rows.map((s,i)=>{
+    const name = (s.brand && s.brand.trim()) || s.name || "Tankstelle";
+    const place = [s.postCode, s.place].filter(Boolean).join(" ");
+    const dist = (typeof s.dist==="number") ? s.dist.toLocaleString("de-DE",{minimumFractionDigits:1,maximumFractionDigits:1})+" km" : "";
+    const price = fmtEuroPerL(s[state.fuel]*100);
+    return `<div class="st-row${i===0?" best":""}">`
+      + `<div><div class="st-name">${escapeHtml(name)}</div>`
+      + `<div class="st-meta">${escapeHtml(place)}${dist?" · "+dist:""}</div></div>`
+      + `<div class="st-price">${price}</div></div>`;
+  }).join("");
+  sec.hidden = false;
+}
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+// ---- Status / error notes -------------------------------------------------
+function setNotes(notes){ // notes: array of {type, title, do}
+  const box = $("status");
+  box.innerHTML = notes.map(n=>
+    `<div class="note ${n.type==="err"?"err":""}"><b>${escapeHtml(n.title)}</b>`
+    + (n.do ? `<span class="do">${escapeHtml(n.do)}</span>` : "") + `</div>`
+  ).join("");
+}
+
+// ---- Orchestration --------------------------------------------------------
+function computeAndRender(extraNotes){
+  const t = berlinNow();
+  const bucket = pickBucket();
+  const v = decide(t.min, state.liveCt, bucket);
+  renderVerdict(t.min, bucket, v);
+  renderChart(t.min, bucket, v);
+  renderStations();
+
+  const notes = [];
+  if(!state.curve) notes.push({type:"err", title:"Tageskurve nicht geladen.", do:"Die Empfehlung nutzt die eingebaute Beispielkurve."});
+  else if(state.curveSource==="fallback") notes.push({type:"info", title:"Tageskurve: eingebaute Beispieldaten.", do:"curve.json wurde nicht gefunden — die App funktioniert trotzdem."});
+  if(t.override) notes.push({type:"info", title:"Testmodus: Uhrzeit über #t="+pad2(Math.floor(t.min/60))+":"+pad2(t.min%60)+" gesetzt.", do:"Entferne den #-Teil der Adresse für die echte Zeit."});
+  if(API_KEY==="REPLACE_ME") notes.push({type:"info", title:"Kein API-Schlüssel hinterlegt.", do:"Live-Preise sind aus. Die Empfehlung beruht allein auf der Tageskurve."});
+  else if(!state.coords) notes.push({type:"info", title:"Kein Standort gewählt.", do:"Standort freigeben oder PLZ eingeben, um Live-Preise zu laden."});
+  if(state.coords && state.coords.approx) notes.push({type:"info", title:"Ungefährer Ort aus PLZ "+state.plz+".", do:"Für genauere Umkreissuche den Standort freigeben."});
+  if(extraNotes) extraNotes.forEach(n=>notes.push(n));
+  setNotes(notes);
+}
+
+// Debounced + throttled live-price load.
+let priceTimer = null;
+function scheduleLoadPrices(){
+  if(!state.coords) return;
+  clearTimeout(priceTimer);
+  priceTimer = setTimeout(loadPrices, 400);
+}
+async function loadPrices(){
+  if(!state.coords) return;
+  if(API_KEY==="REPLACE_ME"){ computeAndRender(); return; }
+  state.loading = true; setRefreshEnabled(false);
+  try{
+    const { stations, cached, stale } = await getStations();
+    state.stations = stations;
+    const prices = stations.map(s=> s[state.fuel]).filter(x=>x>0);
+    state.liveCt = prices.length ? Math.min(...prices)*100 : null;
+    const extra = [];
+    if(!stations.length) extra.push({type:"info", title:"Keine offenen Tankstellen im Umkreis gefunden.", do:"Größeren Umkreis wählen oder später erneut versuchen."});
+    else if(stale) extra.push({type:"info", title:"Zwischengespeicherte Preise (API-Schonfrist).", do:"In wenigen Sekunden ist eine Aktualisierung wieder möglich."});
+    computeAndRender(extra);
+  }catch(err){
+    const note = errorNote(err);
+    computeAndRender([note]);
+  }finally{
+    state.loading = false; setRefreshEnabled(true);
+  }
+}
+function errorNote(err){
+  switch(err && err.code){
+    case "nokey":    return {type:"info", title:"Kein API-Schlüssel hinterlegt.", do:"Live-Preise sind aus."};
+    case "throttle": return {type:"info", title:"Kurze Pause zum Schutz der kostenlosen API.", do:"Erneut möglich in etwa "+err.wait+" s."};
+    case "api":      return {type:"err", title:"Die Tankerkönig-API meldet ein Problem: "+err.message, do:"Bitte den API-Schlüssel prüfen."};
+    case "http":     return {type:"err", title:"Server-Antwort mit Fehler ("+err.status+").", do:"Später erneut versuchen."};
+    case "network":  return {type:"err", title:"Keine Verbindung zur Tankerkönig-API.", do:"Internetverbindung prüfen und erneut versuchen."};
+    case "parse":    return {type:"err", title:"Antwort der API war nicht lesbar.", do:"Später erneut versuchen."};
+    default:         return {type:"err", title:"Preise konnten nicht geladen werden.", do:"Bitte später erneut versuchen."};
+  }
+}
+function setRefreshEnabled(on){
+  const btn = $("refresh-btn");
+  btn.disabled = !(on && state.coords && API_KEY!=="REPLACE_ME");
+}
+
+// ---- Location handlers ----------------------------------------------------
+function useGeolocation(){
+  if(!("geolocation" in navigator)){
+    computeAndRender([{type:"err", title:"Standort wird vom Browser nicht unterstützt.", do:"Bitte PLZ eingeben."}]);
+    return;
+  }
+  $("geo-btn").disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    (pos)=>{
+      state.coords = { lat:+pos.coords.latitude.toFixed(5), lng:+pos.coords.longitude.toFixed(5), approx:false, label:"Standort" };
+      state.plz = null;
+      $("geo-btn").disabled = false;
+      scheduleLoadPrices();
+      computeAndRender();
+    },
+    (err)=>{
+      $("geo-btn").disabled = false;
+      const denied = err && err.code===1;
+      computeAndRender([{type:"err",
+        title: denied ? "Standortfreigabe abgelehnt." : "Standort konnte nicht bestimmt werden.",
+        do:"Gib alternativ eine PLZ ein."}]);
+    },
+    { enableHighAccuracy:false, timeout:10000, maximumAge:60000 }
+  );
+}
+function usePLZ(){
+  const raw = ($("plz").value||"").replace(/\D/g,"");
+  if(raw.length < 2){
+    computeAndRender([{type:"err", title:"Bitte eine gültige PLZ eingeben.", do:"Mindestens die ersten zwei Ziffern."}]);
+    return;
+  }
+  const key = raw.slice(0,2);
+  const c = PLZ2[key];
+  if(!c){
+    computeAndRender([{type:"err", title:"Diese PLZ-Region kennen wir nicht.", do:"Bitte den zweistelligen Anfang prüfen."}]);
+    return;
+  }
+  state.coords = { lat:c[0], lng:c[1], approx:true, label:"PLZ "+raw };
+  state.plz = raw;
+  scheduleLoadPrices();
+  computeAndRender();
+}
+
+// ---- Wiring ---------------------------------------------------------------
+function wire(){
+  $("fuel-group").addEventListener("click", (e)=>{
+    const b = e.target.closest("button[data-fuel]"); if(!b) return;
+    state.fuel = b.dataset.fuel;
+    [...$("fuel-group").children].forEach(x=> x.setAttribute("aria-pressed", String(x===b)));
+    state.liveCt = null; state.stations = null; // prices are fuel-specific
+    computeAndRender();
+    scheduleLoadPrices();
+  });
+  $("rad-group").addEventListener("click", (e)=>{
+    const b = e.target.closest("button[data-rad]"); if(!b) return;
+    state.radius = parseInt(b.dataset.rad,10);
+    [...$("rad-group").children].forEach(x=> x.setAttribute("aria-pressed", String(x===b)));
+    computeAndRender();
+    scheduleLoadPrices();
+  });
+  $("geo-btn").addEventListener("click", useGeolocation);
+  $("plz-btn").addEventListener("click", usePLZ);
+  $("plz").addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); usePLZ(); } });
+  $("refresh-btn").addEventListener("click", ()=>{ if(!state.loading) loadPrices(); });
+  window.addEventListener("hashchange", ()=> computeAndRender());
+  // Recompute every minute so "now" and the minutes-to-noon stay current.
+  setInterval(()=>{ if(!state.loading) computeAndRender(); }, 60000);
+}
+
+// ---- Boot -----------------------------------------------------------------
+(async function init(){
+  wire();
+  computeAndRender();       // render immediately from inline fallback
+  await loadCurve();        // then override with curve.json if available
+  computeAndRender();
+})();
+</script>
+</body>
+</html>
