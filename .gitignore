@@ -1,0 +1,8 @@
+# Tankerkoenig historical data clone (~20 GB) — never commit
+/data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

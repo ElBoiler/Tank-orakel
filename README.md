@@ -15,11 +15,20 @@ keine Vorhersage, eine statistische Tendenz.
 | Datei | Zweck |
 |-------|-------|
 | `index.html` | Die komplette App (HTML, CSS, JS inline). Kein Build, kein Framework. |
-| `curve.json` | Historische Tageskurve. **Demo-/Platzhalterdaten** — durch die echte Auswertung ersetzen. Fällt auf eine eingebettete Kopie zurück, falls die Datei fehlt. |
+| `curve.json` | Historische Tageskurve. Anfangs **Demo-/Platzhalterdaten**; wird vom Kurven-Job (`tools/`) durch echte Auswertung ersetzt. Fällt auf eine eingebettete Kopie zurück, falls die Datei fehlt. |
 | `functions/api/list.js` | Serverless-Proxy → Tankerkönig `list.php`. |
 | `functions/api/prices.js` | Serverless-Proxy → Tankerkönig `prices.php`. |
 | `functions/api/_proxy.js` | Gemeinsame Proxy-Logik (Validierung, Key-Injektion, Caching). |
+| `tools/build_curve.py` | Berechnet `curve.json` aus den historischen Tankerkönig-Daten (siehe `tools/README.md`). |
 | `impressum.html`, `datenschutz.html` | Platzhalter — noch auszufüllen. |
+
+## Tageskurve aktualisieren (regelmäßiger Job)
+
+`curve.json` wird nicht in Cloudflare berechnet, sondern von einem lokalen Job
+(z. B. Windows Task Scheduler) aus den **historischen Tankerkönig-Daten**
+(CC BY-NC-SA 4.0, nicht-kommerziell) erzeugt und ins Repository gepusht — worauf
+Cloudflare Pages automatisch neu deployt. Details und Einrichtung:
+[`tools/README.md`](tools/README.md).
 
 ## API-Schlüssel & Hosting (Cloudflare Pages)
 
