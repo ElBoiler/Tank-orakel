@@ -2,33 +2,38 @@
 REM =====================================================================
 REM Tank-Orakel - nightly curve update (Windows Task Scheduler job).
 REM
-REM Pulls the latest Tankerkoenig historical data, rebuilds curve.json,
-REM and pushes it so Cloudflare Pages redeploys with the fresh curve.
+REM Downloads only the needed day-files from the Tankerkoenig historical
+REM data over HTTPS (no 20 GB clone), rebuilds curve.json, and pushes it
+REM so Cloudflare Pages redeploys with the fresh curve.
 REM
-REM Adjust DATA_DIR to where you cloned the Tankerkoenig data repo.
-REM Register once (run as your user, adjust the path):
+REM Prerequisite: a free Azure DevOps account + a Personal Access Token
+REM with scope "Code (Read)". Store it as a USER environment variable
+REM named TK_AZURE_PAT (setx TK_AZURE_PAT "<token>") so it is not in the
+REM repo. Register the task once (adjust the path):
 REM   schtasks /Create /SC DAILY /ST 05:00 /TN "Tank-Orakel-Curve" ^
 REM     /TR "C:\path\to\Tank-orakel\tools\update_curve.bat"
 REM =====================================================================
 setlocal
 set REPO_DIR=%~dp0..
-set DATA_DIR=%REPO_DIR%\data\tankerkoenig-data
 set WINDOW=90
 
 cd /d "%REPO_DIR%" || exit /b 1
 
-echo [1/4] Updating Tankerkoenig data ...
-git -C "%DATA_DIR%" pull --ff-only || echo   (pull failed - using existing data)
+if "%TK_AZURE_PAT%"=="" (
+  echo ERROR: TK_AZURE_PAT is not set. Create an Azure DevOps PAT ^(Code: Read^)
+  echo        and run:  setx TK_AZURE_PAT "your-token"   then reopen the shell.
+  exit /b 1
+)
 
-echo [2/4] Building curve.json ...
-python "%REPO_DIR%\tools\build_curve.py" --data "%DATA_DIR%" --out "%REPO_DIR%\curve.json" --window %WINDOW% || exit /b 1
+echo [1/3] Building curve.json (downloading needed day-files) ...
+python "%REPO_DIR%\tools\build_curve.py" --out "%REPO_DIR%\curve.json" --window %WINDOW% --cache "%REPO_DIR%\data\cache" || exit /b 1
 
-echo [3/4] Committing ...
+echo [2/3] Committing ...
 git add curve.json
 git diff --cached --quiet && (echo   no change & goto :done)
 git commit -m "Update curve.json (automated)" || exit /b 1
 
-echo [4/4] Pushing ...
+echo [3/3] Pushing ...
 git push origin main || exit /b 1
 
 :done

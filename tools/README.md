@@ -16,43 +16,49 @@ running app or the Cloudflare Functions needs to change — the app already fetc
 `n_station_days`, `cheapest_minute`, `spread_ct`. Regimes are split by date at
 2026-04-01 (the day the 12-Uhr-Regel took effect).
 
+## Data access — a token is required
+
+Anonymous access to the Tankerkönig Azure DevOps repo has been **disabled** by
+Microsoft, so cloning/downloading now needs authentication (a stray password
+prompt with no way past is exactly this). You need a **free Azure DevOps account**
+and a **Personal Access Token (PAT)** with scope **Code → Read**. The dataset is
+licensed **CC BY-NC-SA 4.0** (non-commercial use only).
+
+The builder does **not** clone the 20 GB repo. In its default mode it downloads
+only the day-files it needs over HTTPS (using the PAT) and caches them under
+`data\cache\`, so nightly runs are incremental.
+
+### Get a token
+
+1. Sign in / sign up (free) at <https://dev.azure.com/>.
+2. User settings → **Personal access tokens** → **New Token**.
+3. Scope **Code → Read** (organization: All accessible). Set an expiry and copy
+   the token — you only see it once.
+
 ## One-time setup (Windows)
 
 1. Install Python 3.10+ and the dependencies:
    ```
    pip install -r tools\requirements.txt
    ```
-2. Clone the Tankerkönig historical data **once** (~20 GB) into `data\`:
+2. Store the token as a **user environment variable** (so it never enters the
+   repo), then reopen the shell:
    ```
-   git clone https://tankerkoenig@dev.azure.com/tankerkoenig/tankerkoenig-data/_git/tankerkoenig-data data\tankerkoenig-data
-   ```
-   The dataset is licensed **CC BY-NC-SA 4.0** (non-commercial use only).
-
-   **Passwortabfrage beim Klonen?** Das Repo ist öffentlich und wird *anonym*
-   geklont — es wird kein echtes Konto gebraucht. Bei der `Password`-Abfrage
-   einfach **leer lassen und Enter drücken** (der Benutzername `tankerkoenig`
-   steckt schon in der URL). Öffnet sich unter Windows stattdessen ein
-   Microsoft-/Azure-Anmeldefenster (Git Credential Manager), dieses **abbrechen** —
-   Git klont dann anonym weiter. Alternativ den Credential Manager umgehen:
-   ```
-   git -c credential.helper= clone https://tankerkoenig@dev.azure.com/tankerkoenig/tankerkoenig-data/_git/tankerkoenig-data data\tankerkoenig-data
-   ```
-   Tipp zur Größe: Der Builder liest nur die letzten Tage, daher reicht ein
-   „blobless" Teil-Klon, der die ~20 GB Historie nur bei Bedarf nachlädt:
-   ```
-   git -c credential.helper= clone --filter=blob:none https://tankerkoenig@dev.azure.com/tankerkoenig/tankerkoenig-data/_git/tankerkoenig-data data\tankerkoenig-data
+   setx TK_AZURE_PAT "your-token-here"
    ```
 3. Make sure this repo can `git push origin main` non-interactively (a stored
-   credential / PAT). `data\` is gitignored so the 20 GB clone is never committed.
+   credential). `data\` is gitignored, so the download cache is never committed.
 
 ## Run manually
 
 ```
-python tools\build_curve.py --data data\tankerkoenig-data --out curve.json --window 90
+python tools\build_curve.py --out curve.json --window 90
 ```
 
 - `--window N` rolling window in days (default 90).
 - `--end YYYY-MM-DD` last day to include (default: yesterday).
+- `--pat <token>` instead of the `TK_AZURE_PAT` env var, if you prefer.
+- `--data <dir>` read from an existing local clone instead of downloading.
 
 ## Schedule it
 

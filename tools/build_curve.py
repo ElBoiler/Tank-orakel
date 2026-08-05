@@ -6,13 +6,18 @@ regular local job (e.g. Windows Task Scheduler via tools/update_curve.bat), whic
 then commits and pushes the refreshed curve.json so Cloudflare Pages redeploys.
 
 Data source: the Tankerkoenig historical price data (Azure DevOps repo), licensed
-CC BY-NC-SA 4.0 (non-commercial). Clone it once and `git pull` for daily updates:
+CC BY-NC-SA 4.0 (non-commercial). Anonymous access to that repo is DISABLED, so a
+free Azure DevOps account + a Personal Access Token (scope: Code -> Read) is
+required. Two ways to feed this script:
 
-    git clone https://tankerkoenig@dev.azure.com/tankerkoenig/tankerkoenig-data/_git/tankerkoenig-data
+  * REST (default): download only the day-files needed, over HTTPS, using the PAT
+    from the TK_AZURE_PAT env var (or --pat). No 20 GB clone, no git. Files are
+    cached under --cache so re-runs don't re-download.
+  * Local clone: point --data at a clone of the repo (if you already have one).
 
-Layout used here:
-    <data>/prices/YYYY/MM/YYYY-MM-DD-prices.csv
-    <data>/stations/YYYY/MM/YYYY-MM-DD-stations.csv
+Layout (same in the repo and the download cache):
+    prices/YYYY/MM/YYYY-MM-DD-prices.csv
+    stations/YYYY/MM/YYYY-MM-DD-stations.csv
 
 prices columns:  date, station_uuid, diesel, e5, e10, dieselchange, e5change, e10change
                  (each row is a price-change event; price columns hold new prices in EUR)
@@ -25,15 +30,22 @@ weekday_median_dev_ct{0..6}, by_plz1{"0".."9":{...}}, plus n_station_days,
 cheapest_minute, spread_ct.
 
 Usage:
+    set TK_AZURE_PAT=...            (Windows)   # or export on Linux/macOS
+    python build_curve.py --out ../curve.json --window 90
+    # or from an existing clone:
     python build_curve.py --data ../data/tankerkoenig-data --out ../curve.json --window 90
 """
 from __future__ import annotations
 import argparse
+import base64
 import datetime as dt
 import glob
 import json
 import os
 import sys
+import urllib.error
+import urllib.request
+from urllib.parse import quote
 
 import numpy as np
 import pandas as pd
@@ -175,20 +187,109 @@ def build_regime_json(reg: "Regime", region_scope="overall"):
     }
 
 
-# ---- Data loading ----------------------------------------------------------
-def load_station_plz1(data_dir):
-    files = sorted(glob.glob(os.path.join(data_dir, "stations", "*", "*", "*-stations.csv")))
-    if not files:
-        raise SystemExit(f"No stations CSV found under {data_dir}/stations")
-    df = pd.read_csv(files[-1], usecols=["uuid", "post_code"], dtype=str)
+# ---- Data sources ----------------------------------------------------------
+AZ_ORG = "tankerkoenig"
+AZ_PROJECT = "tankerkoenig-data"
+AZ_REPO = "tankerkoenig-data"
+AZ_ITEMS = f"https://dev.azure.com/{AZ_ORG}/{AZ_PROJECT}/_apis/git/repositories/{AZ_REPO}/items"
+
+
+class LocalClone:
+    """Read files from a local clone of the tankerkoenig-data repo."""
+
+    def __init__(self, data_dir):
+        self.data_dir = data_dir
+
+    def prices_path(self, day):
+        p = os.path.join(self.data_dir, "prices", f"{day:%Y}", f"{day:%m}", f"{day:%Y-%m-%d}-prices.csv")
+        return p if os.path.exists(p) else None
+
+    def stations_path(self):
+        files = sorted(glob.glob(os.path.join(self.data_dir, "stations", "*", "*", "*-stations.csv")))
+        if not files:
+            raise SystemExit(f"No stations CSV found under {self.data_dir}/stations")
+        return files[-1]
+
+
+class AzureRest:
+    """Download only the needed files from the (auth-required) Azure DevOps repo.
+
+    Anonymous access is disabled, so a Personal Access Token with the 'Code (Read)'
+    scope is required. Downloads are cached on disk so re-runs are incremental.
+    """
+
+    def __init__(self, cache_dir, pat):
+        if not pat:
+            raise SystemExit(
+                "Azure DevOps PAT required. Anonymous access to the Tankerkoenig data repo is\n"
+                "disabled. Create a free Azure DevOps account, generate a Personal Access Token\n"
+                "with scope 'Code (Read)', then set TK_AZURE_PAT=<token> (or pass --pat).\n"
+                "Alternatively, point --data at an existing local clone."
+            )
+        self.cache_dir = cache_dir
+        self.auth = "Basic " + base64.b64encode(f":{pat}".encode()).decode()
+        os.makedirs(cache_dir, exist_ok=True)
+
+    def _get(self, url):
+        req = urllib.request.Request(url, headers={"Authorization": self.auth, "Accept": "*/*"})
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                return r.read()
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 203, 302):
+                raise SystemExit(
+                    "Azure DevOps rejected the token (HTTP %s). Check that TK_AZURE_PAT is a valid\n"
+                    "Personal Access Token with the 'Code (Read)' scope and has not expired." % e.code
+                )
+            raise
+
+    def _download(self, repo_path):
+        local = os.path.join(self.cache_dir, repo_path.lstrip("/"))
+        if os.path.exists(local) and os.path.getsize(local) > 0:
+            return local
+        url = f"{AZ_ITEMS}?path={quote(repo_path)}&download=true&api-version=7.1"
+        data = self._get(url)
+        os.makedirs(os.path.dirname(local), exist_ok=True)
+        with open(local, "wb") as f:
+            f.write(data)
+        return local
+
+    def prices_path(self, day):
+        repo_path = f"/prices/{day:%Y}/{day:%m}/{day:%Y-%m-%d}-prices.csv"
+        try:
+            return self._download(repo_path)
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            raise
+
+    def stations_path(self):
+        # Find the newest stations CSV by listing recent years, newest first.
+        this_year = dt.date.today().year
+        for year in (this_year, this_year - 1, this_year - 2):
+            url = f"{AZ_ITEMS}?scopePath=/stations/{year}&recursionLevel=Full&api-version=7.1"
+            try:
+                body = self._get(url)
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    continue
+                raise
+            items = json.loads(body).get("value", [])
+            paths = sorted(
+                it["path"] for it in items
+                if it.get("gitObjectType") == "blob" and str(it.get("path", "")).endswith("-stations.csv")
+            )
+            if paths:
+                return self._download(paths[-1])
+        raise SystemExit("Could not locate a stations CSV in the Azure repo.")
+
+
+def load_station_plz1(stations_csv_path):
+    df = pd.read_csv(stations_csv_path, usecols=["uuid", "post_code"], dtype=str)
     df = df.dropna(subset=["uuid", "post_code"])
     df["plz1"] = df["post_code"].str.strip().str[0]
     df = df[df["plz1"].str.match(r"\d", na=False)]
     return dict(zip(df["uuid"], df["plz1"]))
-
-
-def day_file(data_dir, day):
-    return os.path.join(data_dir, "prices", f"{day:%Y}", f"{day:%m}", f"{day:%Y-%m-%d}-prices.csv")
 
 
 def reconstruct_day(path, fuel, last_price):
@@ -223,7 +324,10 @@ def reconstruct_day(path, fuel, last_price):
 # ---- Main ------------------------------------------------------------------
 def main():
     ap = argparse.ArgumentParser(description="Build curve.json from Tankerkoenig history.")
-    ap.add_argument("--data", required=True, help="path to cloned tankerkoenig-data repo")
+    ap.add_argument("--data", default=None, help="path to a local clone (default: download via Azure REST)")
+    ap.add_argument("--cache", default="data/cache", help="download cache dir for REST mode")
+    ap.add_argument("--pat", default=os.environ.get("TK_AZURE_PAT"),
+                    help="Azure DevOps PAT (Code: Read); or set TK_AZURE_PAT")
     ap.add_argument("--out", default="curve.json", help="output curve.json path")
     ap.add_argument("--window", type=int, default=90, help="rolling window in days")
     ap.add_argument("--end", default=None, help="last day YYYY-MM-DD (default: yesterday)")
@@ -232,8 +336,10 @@ def main():
     end = dt.date.fromisoformat(args.end) if args.end else dt.date.today() - dt.timedelta(days=1)
     days = [end - dt.timedelta(days=i) for i in range(args.window - 1, -1, -1)]
 
-    log(f"Loading station -> PLZ1 map from {args.data} ...")
-    plz1 = load_station_plz1(args.data)
+    source = LocalClone(args.data) if args.data else AzureRest(args.cache, args.pat)
+    log(f"Data source: {'local clone ' + args.data if args.data else 'Azure REST (cache ' + args.cache + ')'}")
+    log("Loading station -> PLZ1 map ...")
+    plz1 = load_station_plz1(source.stations_path())
     log(f"  {len(plz1)} stations mapped.")
 
     # (fuel, regime) accumulators
@@ -243,8 +349,8 @@ def main():
 
     processed = 0
     for day in days:
-        path = day_file(args.data, day)
-        if not os.path.exists(path):
+        path = source.prices_path(day)
+        if not path:
             log(f"  skip {day} (no file)")
             continue
         regime = "post_kpang" if day >= KPANG_DATE else "pre_kpang"
