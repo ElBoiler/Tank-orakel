@@ -300,9 +300,11 @@ footer .links{display:flex; gap:16px; flex-wrap:wrap}
    Tank-Orakel logic
    ========================================================================== */
 
-// API key: leave as the placeholder; it gets filled in before deployment.
-const API_KEY = "REPLACE_ME";
-const API_BASE = "https://creativecommons.tankerkoenig.de/json/";
+// Live prices go through a same-origin serverless proxy (Cloudflare Pages
+// Function under /functions/api) that holds the Tankerkoenig API key in a
+// server-side env secret. No key ships to the browser. Change this only if the
+// proxy is hosted elsewhere.
+const API_BASE = "/api/";
 
 const FUELS = { diesel:"Diesel", e5:"Super E5", e10:"Super E10" };
 const NOON = 720;                 // minutes since midnight
@@ -489,9 +491,9 @@ function purgeOldCache(){
   }catch(e){}
 }
 async function fetchStations(){
-  if(API_KEY === "REPLACE_ME"){ const e = new Error("nokey"); e.code="nokey"; throw e; }
-  const url = `${API_BASE}list.php?lat=${state.coords.lat}&lng=${state.coords.lng}`
-            + `&rad=${state.radius}&sort=dist&type=${state.fuel}&apikey=${encodeURIComponent(API_KEY)}`;
+  // No apikey here — the proxy adds it server-side.
+  const url = `${API_BASE}list?lat=${state.coords.lat}&lng=${state.coords.lng}`
+            + `&rad=${state.radius}&sort=dist&type=${state.fuel}`;
   let res;
   try{ res = await fetch(url); }
   catch(netErr){ const e = new Error("network"); e.code="network"; throw e; }
@@ -715,8 +717,7 @@ function computeAndRender(extraNotes){
   if(!state.curve) notes.push({type:"err", title:"Tageskurve nicht geladen.", do:"Die Empfehlung nutzt die eingebaute Beispielkurve."});
   else if(state.curveSource==="fallback") notes.push({type:"info", title:"Tageskurve: eingebaute Beispieldaten.", do:"curve.json wurde nicht gefunden — die App funktioniert trotzdem."});
   if(t.override) notes.push({type:"info", title:"Testmodus: Uhrzeit über #t="+pad2(Math.floor(t.min/60))+":"+pad2(t.min%60)+" gesetzt.", do:"Entferne den #-Teil der Adresse für die echte Zeit."});
-  if(API_KEY==="REPLACE_ME") notes.push({type:"info", title:"Kein API-Schlüssel hinterlegt.", do:"Live-Preise sind aus. Die Empfehlung beruht allein auf der Tageskurve."});
-  else if(!state.coords) notes.push({type:"info", title:"Kein Standort gewählt.", do:"Standort freigeben oder PLZ eingeben, um Live-Preise zu laden."});
+  if(!state.coords) notes.push({type:"info", title:"Kein Standort gewählt.", do:"Standort freigeben oder PLZ eingeben, um Live-Preise zu laden."});
   if(state.coords && state.coords.approx) notes.push({type:"info", title:"Ungefährer Ort aus PLZ "+state.plz+".", do:"Für genauere Umkreissuche den Standort freigeben."});
   if(extraNotes) extraNotes.forEach(n=>notes.push(n));
   setNotes(notes);
@@ -731,7 +732,6 @@ function scheduleLoadPrices(){
 }
 async function loadPrices(){
   if(!state.coords) return;
-  if(API_KEY==="REPLACE_ME"){ computeAndRender(); return; }
   state.loading = true; setRefreshEnabled(false);
   try{
     const { stations, cached, stale } = await getStations();
@@ -751,7 +751,6 @@ async function loadPrices(){
 }
 function errorNote(err){
   switch(err && err.code){
-    case "nokey":    return {type:"info", title:"Kein API-Schlüssel hinterlegt.", do:"Live-Preise sind aus."};
     case "throttle": return {type:"info", title:"Kurze Pause zum Schutz der kostenlosen API.", do:"Erneut möglich in etwa "+err.wait+" s."};
     case "api":      return {type:"err", title:"Die Tankerkönig-API meldet ein Problem: "+err.message, do:"Bitte den API-Schlüssel prüfen."};
     case "http":     return {type:"err", title:"Server-Antwort mit Fehler ("+err.status+").", do:"Später erneut versuchen."};
@@ -762,7 +761,7 @@ function errorNote(err){
 }
 function setRefreshEnabled(on){
   const btn = $("refresh-btn");
-  btn.disabled = !(on && state.coords && API_KEY!=="REPLACE_ME");
+  btn.disabled = !(on && state.coords);
 }
 
 // ---- Location handlers ----------------------------------------------------
