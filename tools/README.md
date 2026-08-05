@@ -27,6 +27,21 @@ running app or the Cloudflare Functions needs to change — the app already fetc
    git clone https://tankerkoenig@dev.azure.com/tankerkoenig/tankerkoenig-data/_git/tankerkoenig-data data\tankerkoenig-data
    ```
    The dataset is licensed **CC BY-NC-SA 4.0** (non-commercial use only).
+
+   **Passwortabfrage beim Klonen?** Das Repo ist öffentlich und wird *anonym*
+   geklont — es wird kein echtes Konto gebraucht. Bei der `Password`-Abfrage
+   einfach **leer lassen und Enter drücken** (der Benutzername `tankerkoenig`
+   steckt schon in der URL). Öffnet sich unter Windows stattdessen ein
+   Microsoft-/Azure-Anmeldefenster (Git Credential Manager), dieses **abbrechen** —
+   Git klont dann anonym weiter. Alternativ den Credential Manager umgehen:
+   ```
+   git -c credential.helper= clone https://tankerkoenig@dev.azure.com/tankerkoenig/tankerkoenig-data/_git/tankerkoenig-data data\tankerkoenig-data
+   ```
+   Tipp zur Größe: Der Builder liest nur die letzten Tage, daher reicht ein
+   „blobless" Teil-Klon, der die ~20 GB Historie nur bei Bedarf nachlädt:
+   ```
+   git -c credential.helper= clone --filter=blob:none https://tankerkoenig@dev.azure.com/tankerkoenig/tankerkoenig-data/_git/tankerkoenig-data data\tankerkoenig-data
+   ```
 3. Make sure this repo can `git push origin main` non-interactively (a stored
    credential / PAT). `data\` is gitignored so the 20 GB clone is never committed.
 
